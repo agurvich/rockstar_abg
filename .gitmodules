@@ -7,12 +7,14 @@
 [submodule "src/rockstar_abg/gizmo_analysis"]
 	path = src/rockstar_abg/gizmo_analysis
 	url = ./src/rockstar_abg/gizmo_analysis
+        ignore = dirty
 [submodule "src/rockstar_abg/halo_analysis"]
 	path = src/rockstar_abg/halo_analysis
 	url = ./src/rockstar_abg/halo_analysis
 [submodule "src/rockstar_abg/utilities"]
 	path = src/rockstar_abg/utilities
 	url = ./src/rockstar_abg/utilities
+        ignore = dirty
 [submodule "src/rockstar_abg/executables/rockstar-galaxies"]
 	path = src/rockstar_abg/executables/rockstar-galaxies
 	url = ./src/rockstar_abg/executables/rockstar-galaxies
