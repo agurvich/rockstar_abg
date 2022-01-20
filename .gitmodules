@@ -16,6 +16,8 @@
 [submodule "src/rockstar_abg/executables/rockstar-galaxies"]
 	path = src/rockstar_abg/executables/rockstar-galaxies
 	url = ./src/rockstar_abg/executables/rockstar-galaxies
+        ignore = untracked
 [submodule "src/rockstar_abg/executables/consistent-trees"]
 	path = src/rockstar_abg/executables/consistent-trees
 	url = ./src/rockstar_abg/executables/consistent-trees
+        ignore = untracked
