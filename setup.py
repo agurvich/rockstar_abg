@@ -15,6 +15,12 @@ from setuptools.command.egg_info import egg_info
 #Can yield `setup.py install`, `setup.py egg_info`, or `setup.py develop`
 
 def custom_command(prepend=''):
+
+    process = subprocess.Popen(
+        "unzip modifications.zip",
+        shell=True)
+
+
     C_routine_subdir = 'src/rockstar_abg/executables'
     C_routines = os.listdir(C_routine_subdir)
     for C_routine in C_routines:

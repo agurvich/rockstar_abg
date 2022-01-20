@@ -1,33 +1,69 @@
 import os
 import glob
+import shutil
+
+import numpy as np
 
 from .utilities import io as ut_io
 from .gizmo_analysis import gizmo_io
 
 FIREPATH = '/scratch/projects/xsede/GalaxiesOnFIRE'
 
-def main(savename,suite_name='fire3_compatability/core'):
+def main(
+    savename,
+    suite_name='fire3_compatability/core',
+    snapshot_indices=None,
+    run=False):
 
     workpath = os.path.join(
         FIREPATH,
         suite_name,
         savename)
     
-    run_rockstar(workpath)
+    run_rockstar(workpath,snapshot_indices=snapshot_indices,run=run)
 
-def run_rockstar(workpath):
+def run_rockstar(workpath,snapshot_indices=None,run=False):
 
-    ## step 1
+    ## steps 1 & 2 
+    ##  if you're here you already did this-- setup.py will compile executables
 
-    ## make halo directories if necessary
-    ## step 3
+    ## step 3 make halo directories if necessary
     make_halo_dirs(workpath)
 
-    ## step 4
-    ## mimic submitting from directory
+    ## step 4 choose a rockstar config file-- happens in step 6
+
+    ## step 5 generate snapshot indices
+    if snapshot_indices is None: snapshot_indices = np.arange(1,501)
+
+    ##  move to directory where we want the output to be
+    workpath = os.path.join(workpath,'halo','rockstar_dm')
+    os.chdir(workpath)
+    ##  save snapshot_indices.txt file
+    np.savetxt('snapshot_indices.txt',np.array(snapshot_indices).T,fmt='%03d')
+
+    ## steps 6 & 7 & 8 generate auto-rockstar.cfg and mimic submitting from directory
+    ##  runs rockstar and generates output files to /path/to/rockstar_dm/catalog
     current_dir = os.path.dirname(__file__)
-    os.chdir(os.path.join(workpath,'halo','rockstar_dm'))
-    submit_rockstar(current_dir+os.sep)
+    halo_directory = os.path.join(
+        current_dir,
+        'executables',
+        'rockstar-galaxies')
+    #submit_rockstar(halo_directory,run=run)
+
+    ## step 9 :
+    """--- set up Consistent-Trees to generate merger trees --- 
+    Consistent-Trees runs best if you first modify catalog/rockstar.cfg (around line 50) as follows:
+        set STARTING_SNAP = NNN, where out_NNN.txt is the first snapshot with any halos in it
+        change to NUM_SNAPS = 500 (or = 600 for FIRE-2)
+        comment out (with a #) the line named SNAPSHOT_NAMES, so it looks like: 
+            #SNAPSHOT_NAMES = "snapshot_indices.txt"
+    Generate the merger tree configuration file (catalog/outputs/merger_tree.cfg) from the rockstar configuration file (catalog/rockstar.cfg) as follows:
+        perl ~/local/halo/rockstar-galaxies/scripts/gen_merger_cfg.pl catalog/rockstar.cfg
+    Check (and modify if necessary) catalog/outputs/merger_tree.cfg (around line 12) to ensure the following (so the tree runs on the entire simulation):
+        BOX_DIVISIONS=1
+    """
+    ##  make the suggested modifications
+    modify_rockstar_config(current_dir)
 
 def make_halo_dirs(workpath):
     prefix = 'halo/rockstar_dm/'
@@ -47,10 +83,7 @@ def submit_rockstar(halo_directory=None,run=False):
     if halo_directory is None:
         halo_directory = os.environ['HOME'] + '/local/halo/rockstar-galaxies/'
 
-    executable_file_name = os.path.join(
-        halo_directory,
-        'executables',
-        'rockstar-galaxies')
+    executable_file_name = os.path.join(halo_directory,'rockstar-galaxies')
     catalog_directory = 'catalog/'
     config_file_name_restart = 'restart.cfg'
 
@@ -90,19 +123,26 @@ def submit_rockstar(halo_directory=None,run=False):
         else:
             config_file_name = f'rockstar_config_blocks{snapshot_block_number}.txt'
 
-        config_file_name = halo_directory + config_file_name
+        config_file_name = os.path.join(halo_directory,config_file_name)
 
     
     if not run:
         print("Running from",os.getcwd())
     fn = os.system if run else print
+
     # start server
     fn(f'{executable_file_name} -c {config_file_name} &')
 
     # start worker
     fn(
-        f'ibrun mem_affinity {executable_file_name} -c {catalog_directory}auto-rockstar.cfg'
+        f'{executable_file_name} -c {catalog_directory}auto-rockstar.cfg'
         + ' >> rockstar_jobs/rockstar_log.txt'
     )
 
     SubmissionScript.print_runtime()
+
+def modify_rockstar_config(workpath):
+    cfg_file = os.path.join(workpath,'catalog','rockstar.cfg')
+    with open(cfg_file,'a') as handle:
+        for line in handle.readlines():
+            print(line)
