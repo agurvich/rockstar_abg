@@ -63,7 +63,7 @@ def run_rockstar(workpath,snapshot_indices=None,run=False):
         BOX_DIVISIONS=1
     """
     ##  make the suggested modifications
-    modify_rockstar_config(current_dir)
+    modify_rockstar_config(workpath)
 
 def make_halo_dirs(workpath):
     prefix = 'halo/rockstar_dm/'
@@ -125,7 +125,6 @@ def submit_rockstar(halo_directory=None,run=False):
 
         config_file_name = os.path.join(halo_directory,config_file_name)
 
-    
     if not run:
         print("Running from",os.getcwd())
     fn = os.system if run else print
@@ -135,14 +134,33 @@ def submit_rockstar(halo_directory=None,run=False):
 
     # start worker
     fn(
-        f'{executable_file_name} -c {catalog_directory}auto-rockstar.cfg'
+        f'sleep 1 ; {executable_file_name} -c {catalog_directory}auto-rockstar.cfg'
         + ' >> rockstar_jobs/rockstar_log.txt'
     )
 
     SubmissionScript.print_runtime()
 
 def modify_rockstar_config(workpath):
+
+    starting_snap = 60 ## TODO replace
+    max_snap = 60
+
     cfg_file = os.path.join(workpath,'catalog','rockstar.cfg')
-    with open(cfg_file,'a') as handle:
-        for line in handle.readlines():
-            print(line)
+    with open(cfg_file,'r') as handle:
+        lines = handle.readlines()
+        for i in range(len(lines)):
+            line = lines[i]
+            if 'STARTING_SNAP' in line:
+                print(line)
+                lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
+            elif 'NUM_SNAPS' in line:
+                print(line)
+                lines[i] = 'NUM_SNAPS = %03d\n'%max_snap
+            elif 'SNAPSHOT_NAMES' in line:
+                ## only do it once, in case config has already been modified
+                if line[0] != '#':
+                    print(line)
+                    lines[i] = '#SNAPSHOT_NAMES = "snapshot_indices.txt"\n'
+
+    with open(cfg_file,'w') as handle:
+        handle.write(''.join(lines))
