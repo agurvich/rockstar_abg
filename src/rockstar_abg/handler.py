@@ -1,11 +1,10 @@
 import os
 import glob
-import shutil
 
 import numpy as np
 
-from .utilities import io as ut_io
-from .gizmo_analysis import gizmo_io
+
+from .submit import submit_rockstar,submit_consistent_trees
 
 FIREPATH = '/scratch/projects/xsede/GalaxiesOnFIRE'
 
@@ -20,10 +19,16 @@ def main(
         suite_name,
         savename)
     
-    run_rockstar(workpath,snapshot_indices=snapshot_indices,run=run)
+    ## creates directories and moves to halo/rockstar_dm
+    workpath = initialize_workpath(workpath,snapshot_indices)
 
-def run_rockstar(workpath,snapshot_indices=None,run=False):
+    ## generates rockstar halos
+    run_rockstar(run=run)
 
+    ## generates merger tree files
+    run_consistent_trees(workpath,run=run)
+
+def initialize_workpath(workpath,snapshot_indices):
     ## steps 1 & 2 
     ##  if you're here you already did this-- setup.py will compile executables
 
@@ -40,16 +45,19 @@ def run_rockstar(workpath,snapshot_indices=None,run=False):
     os.chdir(workpath)
     ##  save snapshot_indices.txt file
     np.savetxt('snapshot_indices.txt',np.array(snapshot_indices).T,fmt='%03d')
+    return workpath
 
+def run_rockstar(run=False):
     ## steps 6 & 7 & 8 generate auto-rockstar.cfg and mimic submitting from directory
     ##  runs rockstar and generates output files to /path/to/rockstar_dm/catalog
-    current_dir = os.path.dirname(__file__)
-    halo_directory = os.path.join(
-        current_dir,
+    halo_directory = os.path.dirname(__file__)
+    rockstar_directory = os.path.join(
+        halo_directory,
         'executables',
         'rockstar-galaxies')
-    #submit_rockstar(halo_directory,run=run)
+    #submit_rockstar(rockstar_directory,run=run)
 
+def run_consistent_trees(workpath,run=False):
     ## step 9 :
     """--- set up Consistent-Trees to generate merger trees --- 
     Consistent-Trees runs best if you first modify catalog/rockstar.cfg (around line 50) as follows:
@@ -64,6 +72,16 @@ def run_rockstar(workpath,snapshot_indices=None,run=False):
     """
     ##  make the suggested modifications
     modify_rockstar_config(workpath)
+    halo_directory = os.path.dirname(__file__)
+    rockstar_directory = os.path.join(
+        halo_directory,
+        'executables',
+        'rockstar-galaxies')
+    ##  generate merger tree config file and ensure BOX_DIVISIONS=1
+    generate_merger_tree_config(workpath,rockstar_directory)
+
+    ## step 10: run consistent-trees
+    submit_consistent_trees(workpath,halo_directory,run=True)
 
 def make_halo_dirs(workpath):
     prefix = 'halo/rockstar_dm/'
@@ -77,73 +95,9 @@ def make_halo_dirs(workpath):
         if not os.path.isdir(dirpath):
             os.makedirs(dirpath)
 
-def submit_rockstar(halo_directory=None,run=False):
-
-    # names of files and directories
-    if halo_directory is None:
-        halo_directory = os.environ['HOME'] + '/local/halo/rockstar-galaxies/'
-
-    executable_file_name = os.path.join(halo_directory,'rockstar-galaxies')
-    catalog_directory = 'catalog/'
-    config_file_name_restart = 'restart.cfg'
-
-    os.system('umask 0022')  # set permission of files created to be read-only for group and other
-
-    # set and print compute parameters
-    SubmissionScript = ut_io.SubmissionScriptClass('slurm')
-
-    # check if restart config file exists - if so, initiate restart job
-    config_file_name_restart = glob.glob(catalog_directory + config_file_name_restart)
-
-    if len(config_file_name_restart) > 0:
-        config_file_name = config_file_name_restart[0]
-    else:
-        # set number of file blocks per snapshot, or read from snapshot header
-        snapshot_block_number = None
-        if not snapshot_block_number:
-            simulation_directory = '../../.'  # relative path of base simulation directory
-            try:
-                header = gizmo_io.Read.read_header(
-                    simulation_directory, snapshot_value_kind='index', snapshot_value=500
-                )
-            except OSError:
-                header = gizmo_io.Read.read_header(
-                    simulation_directory, snapshot_value_kind='index', snapshot_value=20
-                )
-            except OSError:
-                header = gizmo_io.Read.read_header(
-                    simulation_directory, snapshot_value_kind='index', snapshot_value=0
-                )
-            except OSError:
-                print(f'! cannot read snapshot file in {simulation_directory} to get file block count')
-            snapshot_block_number = header['file.number.per.snapshot']
-
-        if snapshot_block_number == 1:
-            config_file_name = 'rockstar_config.txt'
-        else:
-            config_file_name = f'rockstar_config_blocks{snapshot_block_number}.txt'
-
-        config_file_name = os.path.join(halo_directory,config_file_name)
-
-    if not run:
-        print("Running from",os.getcwd())
-    fn = os.system if run else print
-
-    # start server
-    fn(f'{executable_file_name} -c {config_file_name} &')
-
-    # start worker
-    fn(
-        f'sleep 1 ; {executable_file_name} -c {catalog_directory}auto-rockstar.cfg'
-        + ' >> rockstar_jobs/rockstar_log.txt'
-    )
-
-    SubmissionScript.print_runtime()
-
 def modify_rockstar_config(workpath):
 
-    starting_snap = 60 ## TODO replace
-    max_snap = 60
+    starting_snap,max_snap = find_first_snapshot_with_halos(workpath)
 
     cfg_file = os.path.join(workpath,'catalog','rockstar.cfg')
     with open(cfg_file,'r') as handle:
@@ -162,5 +116,39 @@ def modify_rockstar_config(workpath):
                     print(line)
                     lines[i] = '#SNAPSHOT_NAMES = "snapshot_indices.txt"\n'
 
+    with open(cfg_file,'w') as handle:
+        handle.write(''.join(lines))
+
+def find_first_snapshot_with_halos(workpath):
+    files = glob.glob(
+        os.path.join(workpath,'catalog','halos_*.0.ascii'))
+    files = sorted(files)
+    break_flag = False
+    for file in files:
+        with open(file,'r') as handle:
+            for line in handle:
+                if line[0] !='#':
+                    break_flag = True
+                    break
+        if break_flag: break
+    starting_snap = int(os.path.basename(file).split('_')[1].split('.')[0])
+    max_snap = int(os.path.basename(files[-1]).split('_')[1].split('.')[0])
+    return starting_snap,max_snap
+
+def generate_merger_tree_config(workpath,rockstar_directory):
+    #perl ~/local/halo/rockstar-galaxies/ catalog/rockstar.cfg
+    os.system('perl %s/scripts/gen_merger_cfg.pl %s/catalog/rockstar.cfg'%(rockstar_directory,workpath))
+
+    ## modify to ensure BOX_DIVISIONS=1, per Andrew's instructions.
+    ##  not sure what circumstances would make it not 1 but now we can
+    ##  be sure. 
+    cfg_file = os.path.join(workpath,'catalog','outputs','merger_tree.cfg')
+    with open(cfg_file,'r') as handle:
+        lines = handle.readlines()
+        for i,line in enumerate(lines):
+            if 'BOX_DIVISIONS' in line:
+                lines[i] = 'BOX_DIVISIONS=1\n'
+                
+    ## overwrite with the modification
     with open(cfg_file,'w') as handle:
         handle.write(''.join(lines))
