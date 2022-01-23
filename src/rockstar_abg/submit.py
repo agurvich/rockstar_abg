@@ -2,8 +2,11 @@ import os
 import glob
 import subprocess
 
+import numpy as np
+
 from .utilities import io as ut_io
 from .gizmo_analysis import gizmo_io
+from .halo_analysis import halo_io
 
 def submit_rockstar(rockstar_directory=None,run=False):
 
@@ -95,14 +98,80 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
     # assume periodic boundaries
     # os.system('perl {}/do_merger_tree.pl {} {}'.format(
     #    consistentrees_directory, consistentrees_directory, tree_config_file))
-    ## TODO consider removing
-    os.chdir(consistentrees_directory)
 
     # generate halo progenitor (hlist) catalogs from trees
     fn(
         f'perl {consistentrees_directory}/halo_trees_to_catalog.pl'
-        + f'  {tree_config_file} {consistentrees_directory}'
+        + f' {consistentrees_directory} {tree_config_file}'
     )
+
+    # print run-time information
+    ScriptPrint.print_runtime()
+
+def submit_hdf5(workpath,run=False):
+    # print run-time and CPU information
+    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
+
+    if run: 
+        ## move to the workpath in case we're not there
+        os.chdir(workpath)
+
+        # assume am in rockstar directory
+        current_directory = os.getcwd().split('/')
+        rockstar_directory = current_directory[-2] + '/' + current_directory[-1]
+    
+        halo_io.IO.rewrite_as_hdf5('../../', rockstar_directory)
+
+    # print run-time information
+    ScriptPrint.print_runtime()
+
+def submit_particle(
+    species_name='star', # particle species to assign
+    snapshot_selection='all',
+    snapshot_index_min = 1,  # default minimum snapshot index (if snapshot_selection == 'all')
+    snapshot_index_max = 500, # default maximum snapshot index (if snapshot_selection == 'all')
+    run=False
+    ): # default snapshot selection
+
+
+    snapshot_value_kind = 'index'  # how to select snapshot
+
+    # print run-time and CPU information
+    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
+
+    # check if input arguments
+    if len(os.sys.argv) > 1:
+        snapshot_selection = str(os.sys.argv[1])
+
+    # 'single' = single snapshot
+    # 'all' = all snapshots (with halos)
+    # 'subset' = default subset list of 64 snapshots
+    if snapshot_selection not in ['single', 'subset', 'all']:
+        raise KeyError("snapshot selection must be one of: single, all, subset")
+
+    if snapshot_selection == 'single':
+        # run on single snapshot
+        snapshot_values = snapshot_index_max
+        #if len(os.sys.argv) > 2:
+            #snapshot_values = int(os.sys.argv[2])
+    elif snapshot_selection == 'subset':
+        snapshot_values = halo_io.snapshot_indices_subset
+    elif snapshot_selection == 'all':
+        #if len(os.sys.argv) > 2:
+            #snapshot_index_min = int(os.sys.argv[2])
+        #if len(os.sys.argv) > 3:
+            #snapshot_index_max = int(os.sys.argv[3])
+        snapshot_values = np.arange(snapshot_index_min, snapshot_index_max + 1)
+
+    print(f'assigning {species_name} particles to halos at {snapshot_value_kind}[s]: {snapshot_values}')
+    os.sys.stdout.flush()
+
+    Particle = halo_io.ParticleClass()
+
+    if run:
+        Particle.write_catalogs_with_species(
+            species_name, snapshot_value_kind, snapshot_values, proc_number=ScriptPrint.mpi_number
+        )
 
     # print run-time information
     ScriptPrint.print_runtime()
