@@ -4,7 +4,7 @@ import glob
 import numpy as np
 
 
-from .submit import submit_rockstar,submit_consistent_trees
+from .submit import submit_hdf5, submit_particle, submit_rockstar,submit_consistent_trees
 
 FIREPATH = '/scratch/projects/xsede/GalaxiesOnFIRE'
 
@@ -27,6 +27,25 @@ def main(
 
     ## generates merger tree files
     run_consistent_trees(workpath,run=run)
+
+    ## convert to hdf5 format for easier read-in
+    submit_hdf5(workpath,run=run)
+
+    ## make particle files
+    submit_particle(
+        'star',
+        snapshot_index_min=snapshot_indices.min(),
+        snapshot_index_max=snapshot_indices.max(),
+        run=run)
+
+    ## takes forever and doesn't seem to be standard
+    """
+    submit_particle(
+        'gas',
+        snapshot_index_min=snapshot_indices.min(),
+        snapshot_index_max=snapshot_indices.max(),
+        run=run)
+    """
 
 def initialize_workpath(workpath,snapshot_indices):
     ## steps 1 & 2 
@@ -55,7 +74,7 @@ def run_rockstar(run=False):
         halo_directory,
         'executables',
         'rockstar-galaxies')
-    #submit_rockstar(rockstar_directory,run=run)
+    submit_rockstar(rockstar_directory,run=run)
 
 def run_consistent_trees(workpath,run=False):
     ## step 9 :
@@ -81,7 +100,7 @@ def run_consistent_trees(workpath,run=False):
     generate_merger_tree_config(workpath,rockstar_directory)
 
     ## step 10: run consistent-trees
-    submit_consistent_trees(workpath,halo_directory,run=True)
+    submit_consistent_trees(workpath,halo_directory,run=run)
 
 def make_halo_dirs(workpath):
     prefix = 'halo/rockstar_dm/'
@@ -124,6 +143,8 @@ def find_first_snapshot_with_halos(workpath):
         os.path.join(workpath,'catalog','halos_*.0.ascii'))
     files = sorted(files)
     break_flag = False
+    if len(files) == 0:
+        raise IOError("Couldn't find halo files in",os.path.join(workpath,'catalog'))
     for file in files:
         with open(file,'r') as handle:
             for line in handle:
