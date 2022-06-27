@@ -68,7 +68,14 @@ def initialize_workpath(workpath,snapshot_indices):
     ## step 4 choose a rockstar config file-- happens in step 6
 
     ## step 5 generate snapshot indices
-    if snapshot_indices is None: snapshot_indices = np.arange(1,501)
+    if snapshot_indices is None: 
+        snappath = os.path.join(workpath,'output')
+        print(os.listdir(snappath))
+        snapshot_indices = np.array([
+            int(fname.split('_')[-1]) for fname in os.listdir(snappath) 
+            if ('snapdir' in fname) or ('snapshot' in fname and 'hdf5' in fname)])
+        print(snapshot_indices)
+        import pdb; pdb.set_trace()
 
     ##  move to directory where we want the output to be
     workpath = os.path.join(workpath,'halo','rockstar_dm')
@@ -139,7 +146,7 @@ def modify_rockstar_config(workpath):
                 lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
             elif 'NUM_SNAPS' in line:
                 print(line)
-                lines[i] = 'NUM_SNAPS = %03d\n'%max_snap
+                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap-starting_snap)
             elif 'SNAPSHOT_NAMES' in line:
                 ## only do it once, in case config has already been modified
                 if line[0] != '#':
