@@ -1,0 +1,18 @@
+[submodule "reference/halo_submit"]
+	path = reference/halo_submit
+	url = git@bitbucket.org:awetzel/halo_submit.git
+[submodule "src/rockstar_abg/executables/consistent-trees"]
+	path = src/rockstar_abg/executables/consistent-trees
+	url = git@bitbucket.org:awetzel/consistent-trees.git
+[submodule "src/rockstar_abg/executables/rockstar-galaxies"]
+	path = src/rockstar_abg/executables/rockstar-galaxies
+	url = git@bitbucket.org:awetzel/rockstar-galaxies.git
+[submodule "src/rockstar_abg/gizmo_analysis"]
+	path = src/rockstar_abg/gizmo_analysis
+	url = git@bitbucket.org:awetzel/gizmo_analysis.git
+[submodule "src/rockstar_abg/halo_analysis"]
+	path = src/rockstar_abg/halo_analysis
+	url = git@bitbucket.org:awetzel/halo_analysis.git
+[submodule "src/rockstar_abg/utilities"]
+	path = src/rockstar_abg/utilities
+	url = git@bitbucket.org:awetzel/utilities.git
