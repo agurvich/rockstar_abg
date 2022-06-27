@@ -17,18 +17,20 @@ from setuptools.command.egg_info import egg_info
 def custom_command(prepend=''):
 
     process = subprocess.Popen(
-        "unzip modifications.zip",
+        "unzip -o modifications.zip",
         shell=True)
 
 
     C_routine_subdir = 'src/rockstar_abg/executables'
     C_routines = os.listdir(C_routine_subdir)
     for C_routine in C_routines:
+        print('making:',C_routine,'...',end='\t')
         process = subprocess.Popen(
             "make",
             shell=True,
             cwd=os.path.join(C_routine_subdir,C_routine))
         process.wait()
+        print('made!')
         
 class CustomInstall(install):
     def run(self):
