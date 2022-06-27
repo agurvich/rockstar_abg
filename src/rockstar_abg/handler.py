@@ -60,7 +60,10 @@ def initialize_workpath(workpath,snapshot_indices):
     ##  if you're here you already did this-- setup.py will compile executables
 
     ## step 3 make halo directories if necessary
-    make_halo_dirs(workpath)
+    try: make_halo_dirs(workpath)
+    except PermissionError as e:
+        print(f"PermissionError - Can't write to {e.filename}")
+        raise e
 
     ## step 4 choose a rockstar config file-- happens in step 6
 
