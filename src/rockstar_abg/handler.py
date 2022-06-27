@@ -6,18 +6,26 @@ import numpy as np
 
 from .submit import submit_hdf5, submit_particle, submit_rockstar,submit_consistent_trees
 
-FIREPATH = '/scratch/projects/xsede/GalaxiesOnFIRE'
 
 def main(
     savename,
+    sim_path = None,
     suite_name='fire3_compatability/core',
     snapshot_indices=None,
     run=False):
 
-    workpath = os.path.join(
-        FIREPATH,
-        suite_name,
-        savename)
+    if sim_path is None:
+        sim_path = '/scratch/projects/xsede/GalaxiesOnFIRE'
+
+        workpath = os.path.join(
+            sim_path,
+            suite_name,
+            savename)
+    else:
+        if os.path.basename(sim_path) != savename:
+            workpath = os.path.join(sim_path,savename)
+    print(f"interpreted workpath as: {sim_path}")
+    import pdb; pdb.set_trace()
     
     ## creates directories and moves to halo/rockstar_dm
     workpath = initialize_workpath(workpath,snapshot_indices)

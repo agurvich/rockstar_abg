@@ -1,13 +1,16 @@
 import numpy as np
+import sys
 
 from rockstar_abg.handler import main as handler
 
-def main():
+def main(sim_path=None,name='m12m_m6e4',suite_name='fire3_compatability/core'):
+
     handler(
-        'm12m_m6e4',
-        'fire3_compatability/core',
-        snapshot_indices = np.arange(1,61),
+        name,
+        sim_path,
+        suite_name,
+        snapshot_indices = None, ## use all snapshots in output directory
         run=True)
 
 if __name__ == '__main__':
-    main()
+    main(*sys.argv[1:])
