@@ -13,4 +13,5 @@ src/rockstar_abg/gizmo_analysis/gizmo_track.py \
 src/rockstar_abg/utilities/io.py \
 src/rockstar_abg/halo_analysis/halo_plot.py \
 src/rockstar_abg/halo_analysis/halo_select.py \
-src/rockstar_abg/halo_analysis/halo_io.py 
+src/rockstar_abg/halo_analysis/halo_io.py \
+src/rockstar_abg/executables/rockstar-galaxies/Makefile
