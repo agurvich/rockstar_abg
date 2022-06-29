@@ -1,5 +1,6 @@
 import os
 import glob
+import h5py
 
 import numpy as np
 
@@ -25,13 +26,12 @@ def main(
         if os.path.basename(sim_path) != savename:
             workpath = os.path.join(sim_path,savename)
     print(f"interpreted workpath as: {sim_path}")
-    import pdb; pdb.set_trace()
     
     ## creates directories and moves to halo/rockstar_dm
-    workpath = initialize_workpath(workpath,snapshot_indices)
+    workpath,fire2 = initialize_workpath(workpath,snapshot_indices)
 
     ## generates rockstar halos
-    run_rockstar(run=run)
+    run_rockstar(run=run,fire2=fire2)
 
     ## generates merger tree files
     run_consistent_trees(workpath,run=run)
@@ -68,30 +68,46 @@ def initialize_workpath(workpath,snapshot_indices):
     ## step 4 choose a rockstar config file-- happens in step 6
 
     ## step 5 generate snapshot indices
+    snappath = os.path.join(workpath,'output')
+    potential_snapshots = [
+        fname for fname in os.listdir(snappath) 
+        if ('snapdir' in fname) or ('snapshot' in fname and 'hdf5' in fname)]
+
     if snapshot_indices is None: 
-        snappath = os.path.join(workpath,'output')
-        print(os.listdir(snappath))
-        snapshot_indices = np.array([
-            int(fname.split('_')[-1]) for fname in os.listdir(snappath) 
-            if ('snapdir' in fname) or ('snapshot' in fname and 'hdf5' in fname)])
-        print(snapshot_indices)
-        import pdb; pdb.set_trace()
+        snapshot_indices = sorted([int(val.split('_')[-1].replace('.hdf5','')) for val in potential_snapshots])
+
+    consecutive_indices = np.arange(np.min(snapshot_indices),np.max(snapshot_indices)+1,dtype=int) 
+    missing = set(consecutive_indices) - set(snapshot_indices)
+    if len(missing) > 0: raise IOError("Consistent trees requires consecutive snapshots w.o. gaps.")
+
+    ## determine if we're running on fire3 or fire2
+    ##  by looking at the header info (particularly, whether the underscore is present in Omega_Lambda)
+    fname = os.path.join(snappath,sorted(potential_snapshots)[0])
+    ## handle the absurd scenario where we have nested snapdirs or something idk
+    while os.path.isdir(fname):
+        potential_snapshots = [
+            fname.split('_')[-1] for fname in os.listdir(fname) 
+            if ('snapdir' in fname) or ('snapshot' in fname and 'hdf5' in fname)]
+        if len(fname) == 0: raise IOError(f"Couldn't find a snapshot in {fname}")
+        fname = os.path.join(snappath,sorted(potential_snapshots)[0])
+
+    with h5py.File(fname,'r') as handle: fire2 = 'OmegaLambda' in handle['Header'].attrs.keys()
 
     ##  move to directory where we want the output to be
     workpath = os.path.join(workpath,'halo','rockstar_dm')
     os.chdir(workpath)
     ##  save snapshot_indices.txt file
     np.savetxt('snapshot_indices.txt',np.array(snapshot_indices).T,fmt='%03d')
-    return workpath
+    return workpath,fire2
 
-def run_rockstar(run=False):
+def run_rockstar(run=False,fire2=False):
     ## steps 6 & 7 & 8 generate auto-rockstar.cfg and mimic submitting from directory
     ##  runs rockstar and generates output files to /path/to/rockstar_dm/catalog
     halo_directory = os.path.dirname(__file__)
     rockstar_directory = os.path.join(
         halo_directory,
         'executables',
-        'rockstar-galaxies')
+        'rockstar-galaxies'+'-fire2'*fire2)
     submit_rockstar(rockstar_directory,run=run)
 
 def run_consistent_trees(workpath,run=False):
