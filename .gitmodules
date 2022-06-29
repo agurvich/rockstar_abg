@@ -4,15 +4,24 @@
 [submodule "src/rockstar_abg/executables/consistent-trees"]
 	path = src/rockstar_abg/executables/consistent-trees
 	url = git@bitbucket.org:awetzel/consistent-trees.git
+	ignore = dirty
 [submodule "src/rockstar_abg/executables/rockstar-galaxies"]
 	path = src/rockstar_abg/executables/rockstar-galaxies
 	url = git@bitbucket.org:awetzel/rockstar-galaxies.git
+	ignore = dirty
 [submodule "src/rockstar_abg/gizmo_analysis"]
 	path = src/rockstar_abg/gizmo_analysis
 	url = git@bitbucket.org:awetzel/gizmo_analysis.git
+	ignore = dirty
 [submodule "src/rockstar_abg/halo_analysis"]
 	path = src/rockstar_abg/halo_analysis
 	url = git@bitbucket.org:awetzel/halo_analysis.git
+	ignore = dirty
 [submodule "src/rockstar_abg/utilities"]
 	path = src/rockstar_abg/utilities
 	url = git@bitbucket.org:awetzel/utilities.git
+	ignore = dirty
+[submodule "src/rockstar_abg/executables/rockstar-galaxies-fire2"]
+	path = src/rockstar_abg/executables/rockstar-galaxies-fire2
+	url = git@bitbucket.org:awetzel/rockstar-galaxies.git
+	ignore = dirty

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+git submodule add --force git@bitbucket.org:awetzel/rockstar-galaxies.git src/rockstar_abg/executables/rockstar-galaxies-fire2
 git submodule add --force git@bitbucket.org:awetzel/halo_submit.git reference/halo_submit
 git submodule add --force git@bitbucket.org:awetzel/consistent-trees.git src/rockstar_abg/executables/consistent-trees
 git submodule add --force git@bitbucket.org:awetzel/rockstar-galaxies.git src/rockstar_abg/executables/rockstar-galaxies
