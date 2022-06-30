@@ -16,8 +16,10 @@ from setuptools.command.egg_info import egg_info
 
 def custom_command(prepend=''):
 
+    ## checkout the fire-2 version of rockstar-galaxies with
+    ##  different header names
     process = subprocess.Popen(
-        "unzip -o modifications.zip",
+        "cd src/rockstar_abg/executables/rockstar-galaxies-fire2;git checkout fire2",
         shell=True)
 
 
