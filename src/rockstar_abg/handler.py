@@ -28,7 +28,7 @@ def main(
     print(f"interpreted workpath as: {sim_path}")
     
     ## creates directories and moves to halo/rockstar_dm
-    workpath,fire2 = initialize_workpath(workpath,snapshot_indices)
+    workpath,fire2,snapshot_indices = initialize_workpath(workpath,snapshot_indices)
 
     ## generates rockstar halos
     run_rockstar(run=run,fire2=fire2)
@@ -37,13 +37,12 @@ def main(
     run_consistent_trees(workpath,run=run)
 
     ## convert to hdf5 format for easier read-in
-    submit_hdf5(workpath,run=run)
+    submit_hdf5(workpath,snapshot_indices,run=run)
 
     ## make particle files
     submit_particle(
         'star',
-        snapshot_index_min=snapshot_indices.min(),
-        snapshot_index_max=snapshot_indices.max(),
+        snapshot_indices,
         run=run)
 
     ## takes forever and doesn't seem to be standard
@@ -98,7 +97,7 @@ def initialize_workpath(workpath,snapshot_indices):
     os.chdir(workpath)
     ##  save snapshot_indices.txt file
     np.savetxt('snapshot_indices.txt',np.array(snapshot_indices).T,fmt='%03d')
-    return workpath,fire2
+    return workpath,fire2,snapshot_indices
 
 def run_rockstar(run=False,fire2=False):
     ## steps 6 & 7 & 8 generate auto-rockstar.cfg and mimic submitting from directory

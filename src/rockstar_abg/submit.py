@@ -1,6 +1,7 @@
 import os
 import glob
 import subprocess
+import time
 
 import numpy as np
 
@@ -9,6 +10,7 @@ from .gizmo_analysis import gizmo_io
 from .halo_analysis import halo_io
 
 def submit_rockstar(rockstar_directory=None,run=False):
+    #time.sleep(2)
 
     # names of files and directories
     if rockstar_directory is None:
@@ -56,6 +58,31 @@ def submit_rockstar(rockstar_directory=None,run=False):
 
         config_file_name = os.path.join(rockstar_directory,config_file_name)
 
+    starting_snap = None
+    restart_snap = None
+    num_snaps = None
+    with open(os.path.join(os.getcwd(),config_file_name),'r') as handle:
+        for line in handle.readlines():
+            if 'STARTING_SNAP' in line: starting_snap = eval(line.split('=')[1])
+            elif 'RESTART_SNAP' in line: restart_snap = eval(line.split('=')[1])
+            elif 'NUM_SNAPS' in line: num_snaps = eval(line.split('=')[1])
+    
+    if restart_snap is not None and restart_snap == (num_snaps-1):
+        check_exists_catalog = os.path.join(
+            os.getcwd(),
+            'catalog',
+            f'halos_{restart_snap:03d}*')
+        
+        check_exists_outlist = os.path.join(
+            os.getcwd(),
+            'catalog',
+            f'out_{restart_snap:03d}.list')
+
+        files = glob.glob(check_exists_catalog)
+        if len(files) > 0 and os.path.isfile(check_exists_outlist): 
+            print("<<<< Already produced rockstar catalogs, skipping <submit_rockstar> >>>>")
+            run = False
+
     if not run:
         print("Running from",os.getcwd())
     fn = os.system if run else print
@@ -69,9 +96,12 @@ def submit_rockstar(rockstar_directory=None,run=False):
         + ' >> rockstar_jobs/rockstar_log.txt'
     )
 
-    SubmissionScript.print_runtime()
+    if fn is not print: SubmissionScript.print_runtime()
+    #time.sleep(2)
 
 def submit_consistent_trees(workpath,halo_directory,run=False):
+    #time.sleep(2)
+
     # directories and files
     if halo_directory is None:
         halo_directory = os.environ['HOME'] + '/local/halo/'
@@ -80,14 +110,17 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
     consistentrees_directory = os.path.join(halo_directory,'executables','consistent-trees')
     tree_config_file = os.path.join(workpath,'catalog/outputs/merger_tree.cfg')
 
-    # print run-time and CPU information
-    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
 
     # generate merger tree config file (catalog/outputs/merger_tree.cfg) from rockstar config file
     # os.system(f'perl {rockstar_directory}/scripts/gen_merger_cfg.pl catalog/rockstar.cfg')
 
-
     fn = os.system if run else print
+    if len(os.listdir(os.path.join(workpath,'catalog','trees'))) > 0: 
+        print("<<<< Already produced consistent-trees trees, skipping <submit_consistent_trees.0> >>>>")
+        fn = print
+
+    # print run-time and CPU information
+    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
 
     # generate tree files
     # assume non-periodic boundaries
@@ -99,6 +132,19 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
     # os.system('perl {}/do_merger_tree.pl {} {}'.format(
     #    consistentrees_directory, consistentrees_directory, tree_config_file))
 
+    fn = os.system if run else print
+    scalefile = None
+    with open(tree_config_file,'r') as handle:
+        for line in handle.readlines():
+            if 'SCALEFILE' in line: scalefile = line.split('=')[-1].replace(' ','').replace('\n','').replace('"','')
+
+    n_hlists = -1
+    with open(scalefile,'r') as handle:
+        n_hlists = len(handle.readlines())
+    if len(os.listdir(os.path.join(workpath,'catalog','hlists'))) == n_hlists: 
+        print("<<<< Already produced consistent-trees hlists, skipping <submit_consistent_trees.1> >>>>")
+        fn = print
+
     # generate halo progenitor (hlist) catalogs from trees
     fn(
         f'perl {consistentrees_directory}/halo_trees_to_catalog.pl'
@@ -106,13 +152,23 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
     )
 
     # print run-time information
-    ScriptPrint.print_runtime()
+    if fn is not print: ScriptPrint.print_runtime()
+    #time.sleep(2)
 
-def submit_hdf5(workpath,run=False):
-    # print run-time and CPU information
-    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
+def submit_hdf5(workpath,snapshot_indices,run=False):
+    #time.sleep(2)
+
+    last_fname = os.path.join(workpath,'catalog_hdf5',f'halo_{snapshot_indices[-1]:03d}.hdf5')
+    tree_fname = os.path.join(workpath,'catalog_hdf5','tree.hdf5')
+
+    if os.path.isfile(last_fname) and os.path.isfile(tree_fname):
+        print("<<<< Already converted catalogs to hdf5, skipping <submit_hdf5> >>>>")
+        run = False
 
     if run: 
+        # print run-time and CPU information
+        ScriptPrint = ut_io.SubmissionScriptClass('slurm')
+
         ## move to the workpath in case we're not there
         os.chdir(workpath)
 
@@ -122,56 +178,34 @@ def submit_hdf5(workpath,run=False):
     
         halo_io.IO.rewrite_as_hdf5('../../', rockstar_directory)
 
-    # print run-time information
-    ScriptPrint.print_runtime()
+        # print run-time information
+        ScriptPrint.print_runtime()
+
+    #time.sleep(2)
 
 def submit_particle(
-    species_name='star', # particle species to assign
-    snapshot_selection='all',
-    snapshot_index_min = 1,  # default minimum snapshot index (if snapshot_selection == 'all')
-    snapshot_index_max = 500, # default maximum snapshot index (if snapshot_selection == 'all')
-    run=False
-    ): # default snapshot selection
+    species_name, # particle species to assign
+    snapshot_indices,
+    run=False): # default snapshot selection
 
-
-    snapshot_value_kind = 'index'  # how to select snapshot
-
-    # print run-time and CPU information
-    ScriptPrint = ut_io.SubmissionScriptClass('slurm')
-
-    # check if input arguments
-    if len(os.sys.argv) > 1:
-        snapshot_selection = str(os.sys.argv[1])
-
-    # 'single' = single snapshot
-    # 'all' = all snapshots (with halos)
-    # 'subset' = default subset list of 64 snapshots
-    if snapshot_selection not in ['single', 'subset', 'all']:
-        raise KeyError("snapshot selection must be one of: single, all, subset")
-
-    if snapshot_selection == 'single':
-        # run on single snapshot
-        snapshot_values = snapshot_index_max
-        #if len(os.sys.argv) > 2:
-            #snapshot_values = int(os.sys.argv[2])
-    elif snapshot_selection == 'subset':
-        snapshot_values = halo_io.snapshot_indices_subset
-    elif snapshot_selection == 'all':
-        #if len(os.sys.argv) > 2:
-            #snapshot_index_min = int(os.sys.argv[2])
-        #if len(os.sys.argv) > 3:
-            #snapshot_index_max = int(os.sys.argv[3])
-        snapshot_values = np.arange(snapshot_index_min, snapshot_index_max + 1)
-
-    print(f'assigning {species_name} particles to halos at {snapshot_value_kind}[s]: {snapshot_values}')
-    os.sys.stdout.flush()
-
-    Particle = halo_io.ParticleClass()
+    last_fname = os.path.join(os.getcwd(),'catalog_hdf5',f'halo_{snapshot_indices[-1]:03d}.hdf5')
+    if os.path.isfile(last_fname):
+        print("<<<< Already assigned stars to halos, skipping <submit_particle> >>>>")
+        run = False
 
     if run:
+        # print run-time and CPU information
+        ScriptPrint = ut_io.SubmissionScriptClass('slurm')
+
+        print(f'assigning {species_name} particles to halos at indices: {snapshot_indices}')
+        os.sys.stdout.flush()
+
+        Particle = halo_io.ParticleClass()
+
         Particle.write_catalogs_with_species(
-            species_name, snapshot_value_kind, snapshot_values, proc_number=ScriptPrint.mpi_number
+            species_name, 'index', snapshot_indices, proc_number=ScriptPrint.mpi_number
         )
 
-    # print run-time information
-    ScriptPrint.print_runtime()
+        # print run-time information
+        ScriptPrint.print_runtime()
+    #time.sleep(2)
