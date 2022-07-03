@@ -188,7 +188,7 @@ def submit_particle(
     snapshot_indices,
     run=False): # default snapshot selection
 
-    last_fname = os.path.join(os.getcwd(),'catalog_hdf5',f'halo_{snapshot_indices[-1]:03d}.hdf5')
+    last_fname = os.path.join(os.getcwd(),'catalog_hdf5',f'star_{snapshot_indices[-1]:03d}.hdf5')
     if os.path.isfile(last_fname):
         print("<<<< Already assigned stars to halos, skipping <submit_particle> >>>>")
         run = False
