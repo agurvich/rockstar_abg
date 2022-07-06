@@ -161,7 +161,7 @@ def modify_rockstar_config(workpath):
                 lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
             elif 'NUM_SNAPS' in line:
                 print(line)
-                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap-starting_snap)
+                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap-starting_snap+1)
             elif 'SNAPSHOT_NAMES' in line:
                 ## only do it once, in case config has already been modified
                 if line[0] != '#':

@@ -63,9 +63,9 @@ def submit_rockstar(rockstar_directory=None,run=False):
     num_snaps = None
     with open(os.path.join(os.getcwd(),config_file_name),'r') as handle:
         for line in handle.readlines():
-            if 'STARTING_SNAP' in line: starting_snap = eval(line.split('=')[1])
-            elif 'RESTART_SNAP' in line: restart_snap = eval(line.split('=')[1])
-            elif 'NUM_SNAPS' in line: num_snaps = eval(line.split('=')[1])
+            if 'STARTING_SNAP =' in line: starting_snap = eval(line.split('=')[1])
+            elif 'RESTART_SNAP =' in line: restart_snap = eval(line.split('=')[1])
+            elif 'NUM_SNAPS =' in line: num_snaps = eval(line.split('=')[1])
     
     if restart_snap is not None and restart_snap == (num_snaps-1):
         check_exists_catalog = os.path.join(
@@ -140,10 +140,12 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
 
     n_hlists = -1
     with open(scalefile,'r') as handle:
-        n_hlists = len(handle.readlines())
+        lines = handle.readlines()
+        n_hlists = len(lines)
     if len(os.listdir(os.path.join(workpath,'catalog','hlists'))) == n_hlists: 
         print("<<<< Already produced consistent-trees hlists, skipping <submit_consistent_trees.1> >>>>")
         fn = print
+    #else: print(len(os.listdir(os.path.join(workpath,'catalog','hlists'))),n_hlists)
 
     # generate halo progenitor (hlist) catalogs from trees
     fn(
