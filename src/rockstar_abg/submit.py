@@ -9,7 +9,56 @@ from .utilities import io as ut_io
 from .gizmo_analysis import gizmo_io
 from .halo_analysis import halo_io
 
-def submit_rockstar(rockstar_directory=None,run=False):
+def modify_rockstar_config(
+    workpath,
+    source=None,
+    target=None,
+    starting_snap=None,
+    max_snap=None):
+
+    if starting_snap is None or max_snap is None:
+        starting_snap,max_snap = find_first_snapshot_with_halos(workpath)
+
+    if source is None: source = os.path.join(workpath,'catalog','rockstar.cfg')
+    if target is None: target = source
+    with open(source,'r') as handle:
+        lines = handle.readlines()
+        for i in range(len(lines)):
+            line = lines[i]
+            if 'STARTING_SNAP = ' in line:
+                lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
+                print(line,'->',lines[i])
+            elif 'NUM_SNAPS = ' in line:
+                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap)
+                print(line,'->',lines[i])
+            elif 'SNAPSHOT_NAMES' in line:
+                ## only do it once, in case config has already been modified
+                if line[0] != '#':
+                    lines[i] = '#SNAPSHOT_NAMES = "snapshot_indices.txt"\n'
+                    print(line.replace('\n',''),'->',lines[i])
+
+    with open(target,'w') as handle:
+        handle.write(''.join(lines))
+
+def find_first_snapshot_with_halos(workpath):
+    files = glob.glob(
+        os.path.join(workpath,'catalog','halos_*.0.ascii'))
+    files = sorted(files)
+    break_flag = False
+    if len(files) == 0:
+        raise IOError("Couldn't find halo files in",os.path.join(workpath,'catalog'))
+    for file in files:
+        with open(file,'r') as handle:
+            for line in handle:
+                if line[0] !='#':
+                    break_flag = True
+                    break
+        if break_flag: break
+    starting_snap = int(os.path.basename(file).split('_')[1].split('.')[0])
+    max_snap = int(os.path.basename(files[-1]).split('_')[1].split('.')[0])
+    return starting_snap,max_snap
+
+def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
     #time.sleep(2)
 
     # names of files and directories
@@ -30,7 +79,13 @@ def submit_rockstar(rockstar_directory=None,run=False):
 
     if len(config_file_name_restart) > 0:
         config_file_name = config_file_name_restart[0]
+        restart_snap = None
+        with open(os.path.join(os.getcwd(),config_file_name),'r') as handle:
+            for line in handle.readlines():
+                if 'RESTART_SNAP =' in line: restart_snap = eval(line.split('=')[1])
     else:
+        restart_snap = None
+
         # set number of file blocks per snapshot, or read from snapshot header
         snapshot_block_number = None
         if not snapshot_block_number:
@@ -57,17 +112,11 @@ def submit_rockstar(rockstar_directory=None,run=False):
             config_file_name = f'rockstar_config_blocks{snapshot_block_number}.txt'
 
         config_file_name = os.path.join(rockstar_directory,config_file_name)
+        new_config_file_name = os.path.join(os.getcwd(),'rockstar_jobs',os.path.basename(config_file_name))
+        modify_rockstar_config(None,config_file_name,new_config_file_name,snapshot_indices[0],snapshot_indices[-1])
+        config_file_name = new_config_file_name
 
-    starting_snap = None
-    restart_snap = None
-    num_snaps = None
-    with open(os.path.join(os.getcwd(),config_file_name),'r') as handle:
-        for line in handle.readlines():
-            if 'STARTING_SNAP =' in line: starting_snap = eval(line.split('=')[1])
-            elif 'RESTART_SNAP =' in line: restart_snap = eval(line.split('=')[1])
-            elif 'NUM_SNAPS =' in line: num_snaps = eval(line.split('=')[1])
-    
-    if restart_snap is not None and restart_snap == (num_snaps-1):
+    if restart_snap is not None and restart_snap == (len(snapshot_indices)-1):
         check_exists_catalog = os.path.join(
             os.getcwd(),
             'catalog',

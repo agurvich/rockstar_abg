@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 
 
-from .submit import submit_hdf5, submit_particle, submit_rockstar,submit_consistent_trees
+from .submit import submit_hdf5, submit_particle, submit_rockstar,submit_consistent_trees,modify_rockstar_config
 
 
 def main(
@@ -31,7 +31,7 @@ def main(
     workpath,fire2,snapshot_indices = initialize_workpath(workpath,snapshot_indices)
 
     ## generates rockstar halos
-    run_rockstar(run=run,fire2=fire2)
+    run_rockstar(snapshot_indices,run=run,fire2=fire2)
 
     ## generates merger tree files
     run_consistent_trees(workpath,run=run)
@@ -99,7 +99,7 @@ def initialize_workpath(workpath,snapshot_indices):
     np.savetxt('snapshot_indices.txt',np.array(snapshot_indices).T,fmt='%03d')
     return workpath,fire2,snapshot_indices
 
-def run_rockstar(run=False,fire2=False):
+def run_rockstar(snapshot_indices,run=False,fire2=False):
     ## steps 6 & 7 & 8 generate auto-rockstar.cfg and mimic submitting from directory
     ##  runs rockstar and generates output files to /path/to/rockstar_dm/catalog
     halo_directory = os.path.dirname(__file__)
@@ -107,7 +107,7 @@ def run_rockstar(run=False,fire2=False):
         halo_directory,
         'executables',
         'rockstar-galaxies'+'-fire2'*fire2)
-    submit_rockstar(rockstar_directory,run=run)
+    submit_rockstar(snapshot_indices,rockstar_directory,run=run)
 
 def run_consistent_trees(workpath,run=False):
     ## step 9 :
@@ -146,48 +146,6 @@ def make_halo_dirs(workpath):
         dirpath = os.path.join(workpath,prefix,suffix)
         if not os.path.isdir(dirpath):
             os.makedirs(dirpath)
-
-def modify_rockstar_config(workpath):
-
-    starting_snap,max_snap = find_first_snapshot_with_halos(workpath)
-
-    cfg_file = os.path.join(workpath,'catalog','rockstar.cfg')
-    with open(cfg_file,'r') as handle:
-        lines = handle.readlines()
-        for i in range(len(lines)):
-            line = lines[i]
-            if 'STARTING_SNAP' in line:
-                print(line)
-                lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
-            elif 'NUM_SNAPS' in line:
-                print(line)
-                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap-starting_snap+1)
-            elif 'SNAPSHOT_NAMES' in line:
-                ## only do it once, in case config has already been modified
-                if line[0] != '#':
-                    print(line)
-                    lines[i] = '#SNAPSHOT_NAMES = "snapshot_indices.txt"\n'
-
-    with open(cfg_file,'w') as handle:
-        handle.write(''.join(lines))
-
-def find_first_snapshot_with_halos(workpath):
-    files = glob.glob(
-        os.path.join(workpath,'catalog','halos_*.0.ascii'))
-    files = sorted(files)
-    break_flag = False
-    if len(files) == 0:
-        raise IOError("Couldn't find halo files in",os.path.join(workpath,'catalog'))
-    for file in files:
-        with open(file,'r') as handle:
-            for line in handle:
-                if line[0] !='#':
-                    break_flag = True
-                    break
-        if break_flag: break
-    starting_snap = int(os.path.basename(file).split('_')[1].split('.')[0])
-    max_snap = int(os.path.basename(files[-1]).split('_')[1].split('.')[0])
-    return starting_snap,max_snap
 
 def generate_merger_tree_config(workpath,rockstar_directory):
     #perl ~/local/halo/rockstar-galaxies/ catalog/rockstar.cfg
