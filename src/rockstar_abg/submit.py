@@ -96,7 +96,7 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
                 )
             except OSError:
                 header = gizmo_io.Read.read_header(
-                    simulation_directory, snapshot_value_kind='index', snapshot_value=20
+                    simulation_directory, snapshot_value_kind='index', snapshot_value=snapshot_indices[-1]
                 )
             except OSError:
                 header = gizmo_io.Read.read_header(
