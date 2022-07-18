@@ -14,4 +14,4 @@ python setup.py install #<— may need to link C libraries like hdf5 if you have
 
 This will unzip modifications to Andrew's code (mostly just making it use relative imports rather than absolute-- also one change to a Makefile to use gcc rather than icc). 
 
-Then you should be able to call `runner.py` as `run_for_imran.sh` to generate halo files in the simulation directory.
+Then you should be able to call `runner.py` as is done in `job_maker.sh` to generate halo files in the simulation directory.
