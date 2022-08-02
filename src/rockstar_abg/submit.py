@@ -11,13 +11,10 @@ from .halo_analysis import halo_io
 
 def modify_rockstar_config(
     workpath,
+    starting_snap,
+    finish_snap,
     source=None,
-    target=None,
-    starting_snap=None,
-    max_snap=None):
-
-    if starting_snap is None or max_snap is None:
-        starting_snap,max_snap = find_first_snapshot_with_halos(workpath)
+    target=None):
 
     if source is None: source = os.path.join(workpath,'catalog','rockstar.cfg')
     if target is None: target = source
@@ -29,7 +26,7 @@ def modify_rockstar_config(
                 lines[i] = 'STARTING_SNAP = %03d\n'%starting_snap
                 print(line,'->',lines[i])
             elif 'NUM_SNAPS = ' in line:
-                lines[i] = 'NUM_SNAPS = %03d\n'%(max_snap)
+                lines[i] = 'NUM_SNAPS = %03d\n'%(finish_snap+1)
                 print(line,'->',lines[i])
             elif 'SNAPSHOT_NAMES' in line:
                 ## only do it once, in case config has already been modified
