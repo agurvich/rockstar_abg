@@ -1,7 +1,7 @@
 import os
 import glob
-import subprocess
-import time
+import shutil
+import copy
 
 import numpy as np
 
@@ -220,10 +220,15 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
 
     # generate tree files
     # assume non-periodic boundaries
-    fn(
+    foo = fn(
         f'perl {consistentrees_directory}/do_merger_tree_np.pl'
         + f' {consistentrees_directory} {tree_config_file}'
     )
+
+    if len(os.listdir(os.path.join(workpath,'catalog','trees'))) == 0: 
+        failed = True
+    else: failed = False
+
     # assume periodic boundaries
     # os.system('perl {}/do_merger_tree.pl {} {}'.format(
     #    consistentrees_directory, consistentrees_directory, tree_config_file))
@@ -233,6 +238,12 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
     with open(tree_config_file,'r') as handle:
         for line in handle.readlines():
             if 'SCALEFILE' in line: scalefile = line.split('=')[-1].replace(' ','').replace('\n','').replace('"','')
+    
+    if failed: 
+        with open(scalefile,'r') as handle:
+            print(handle.readlines())
+        print(foo)
+        raise Exception("Failed to build tree files")
 
     n_hlists = -1
     with open(scalefile,'r') as handle:
@@ -248,6 +259,9 @@ def submit_consistent_trees(workpath,halo_directory,run=False):
         f'perl {consistentrees_directory}/halo_trees_to_catalog.pl'
         + f' {consistentrees_directory} {tree_config_file}'
     )
+
+    if len(os.listdir(os.path.join(workpath,'catalog','hlists'))) == 0: 
+        raise Exception("Failed to build hlists")
 
     # print run-time information
     if fn is not print: ScriptPrint.print_runtime()
