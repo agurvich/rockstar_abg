@@ -34,7 +34,7 @@ def main(
     run_rockstar(snapshot_indices,run=run,fire2=fire2)
 
     ## generates merger tree files
-    run_consistent_trees(workpath,run=run)
+    run_consistent_trees(workpath,snapshot_indices,run=run)
 
     ## convert to hdf5 format for easier read-in
     submit_hdf5(workpath,snapshot_indices,run=run)
@@ -109,7 +109,7 @@ def run_rockstar(snapshot_indices,run=False,fire2=False):
         'rockstar-galaxies'+'-fire2'*fire2)
     submit_rockstar(snapshot_indices,rockstar_directory,run=run)
 
-def run_consistent_trees(workpath,run=False):
+def run_consistent_trees(workpath,snapshot_indices,run=False):
     ## step 9 :
     """--- set up Consistent-Trees to generate merger trees --- 
     Consistent-Trees runs best if you first modify catalog/rockstar.cfg (around line 50) as follows:
@@ -123,7 +123,8 @@ def run_consistent_trees(workpath,run=False):
         BOX_DIVISIONS=1
     """
     ##  make the suggested modifications
-    modify_rockstar_config(workpath)
+    ## -1 because num_snaps means something different for consistent trees than rockstar, what a cluster-f***
+    modify_rockstar_config(workpath,snapshot_indices[0],snapshot_indices[-1]-1)
     halo_directory = os.path.dirname(__file__)
     rockstar_directory = os.path.join(
         halo_directory,
