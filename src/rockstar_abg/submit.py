@@ -151,23 +151,32 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
         except: min_snap,max_snap = snapshot_indices[0],-1
         need_to_do_work = max_snap < snapshot_indices[-1]
 
+        modify_rockstar_config(
+            None,
+            min_snap,
+            snapshot_indices[-1],
+            config_file_name,
+            new_config_file_name)
+
         config_file_name = new_config_file_name
 
-    if restart_snap is not None and restart_snap == (len(snapshot_indices)-1):
+    if not need_to_do_work:
+        """
         check_exists_catalog = os.path.join(
             os.getcwd(),
             'catalog',
-            f'halos_{restart_snap:03d}*')
+            f'halos_{snapshot_indices[-1]:d}*')
         
         check_exists_outlist = os.path.join(
             os.getcwd(),
             'catalog',
-            f'out_{restart_snap:03d}.list')
+            f'out_{snapshot_indices[-1]:d}.list')
 
         files = glob.glob(check_exists_catalog)
         if len(files) > 0 and os.path.isfile(check_exists_outlist): 
             print("<<<< Already produced rockstar catalogs, skipping <submit_rockstar> >>>>")
-            run = False
+        """
+        run = False
 
     if not run:
         print("Running from",os.getcwd())
