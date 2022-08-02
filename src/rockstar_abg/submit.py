@@ -73,15 +73,24 @@ def renumber_catalog_files(workpath,files=None,rewrite=False,pattern=None):
             shutil.move(src,dst)
 
     return files
+
+def find_first_snapshot_with_halos(workpath,reverse=False):
+    if workpath is None: workpath = os.getcwd()
+    files = glob.glob(os.path.join(workpath,'catalog','halos_*.0.ascii'))
+    new_files = renumber_catalog_files(workpath,files)
+
+    files = np.array(files)[np.argsort(new_files)]
+
+    if reverse: files = files[::-1]
+
     break_flag = False
     if len(files) == 0:
         raise IOError("Couldn't find halo files in",os.path.join(workpath,'catalog'))
     for file in files:
         with open(file,'r') as handle:
             for line in handle:
-                if line[0] !='#':
-                    break_flag = True
-                    break
+                ## break out of the nested loop
+                if line[0] !='#': break_flag = True; break
         if break_flag: break
     starting_snap = int(os.path.basename(file).split('_')[1].split('.')[0])
     max_snap = int(os.path.basename(files[-1]).split('_')[1].split('.')[0])
