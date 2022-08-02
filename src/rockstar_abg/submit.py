@@ -40,10 +40,39 @@ def modify_rockstar_config(
     with open(target,'w') as handle:
         handle.write(''.join(lines))
 
-def find_first_snapshot_with_halos(workpath):
-    files = glob.glob(
-        os.path.join(workpath,'catalog','halos_*.0.ascii'))
-    files = sorted(files)
+def renumber_all_files(workpath):
+    if workpath is None: workpath = os.getcwd()
+    files = glob.glob(os.path.join(workpath,'catalog','halos_*.0.ascii'))
+    if len(files): 
+        _, max_snapnum = find_first_snapshot_with_halos(workpath)
+        patterns = glob.glob(os.path.join(workpath,'catalog',f'*_*{max_snapnum}.*'))
+        repl = os.path.basename(patterns[-1]).split('_')[1].split('.')[0]
+        patterns = [os.path.basename(pattern).replace(repl,'*') for pattern in patterns]
+    else: raise IOError(f"No files to rewrite in {workpath}")
+    for pattern in patterns: renumber_catalog_files(workpath,rewrite=True,pattern=pattern)
+
+def renumber_catalog_files(workpath,files=None,rewrite=False,pattern=None):
+    if pattern is None: pattern = 'halos_*.0.ascii'
+
+    prefix,suffix = pattern.split('_')[0]+'_','.'+'.'.join(pattern.split('.')[1:])
+
+    if files is None:
+        if workpath is None: workpath = os.getcwd()
+        files = glob.glob(os.path.join(workpath,'catalog',pattern))
+        files = sorted(files)
+    else: files = copy.copy(files)
+
+    for i in range(len(files)):
+        src = files[i]
+        number = int(src.split(prefix)[1].split(suffix)[0])
+        new_number = f"{number:03d}"
+        dst = os.path.join(workpath,'catalog',f'{prefix}{new_number}{suffix}')
+        files[i] = dst
+        if rewrite and src != dst: 
+            print(os.path.basename(src),'->',os.path.basename(dst))
+            shutil.move(src,dst)
+
+    return files
     break_flag = False
     if len(files) == 0:
         raise IOError("Couldn't find halo files in",os.path.join(workpath,'catalog'))
@@ -77,15 +106,13 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
     # check if restart config file exists - if so, initiate restart job
     config_file_name_restart = glob.glob(catalog_directory + config_file_name_restart)
 
-    if len(config_file_name_restart) > 0:
+    if len(config_file_name_restart) > 0 and False:
         config_file_name = config_file_name_restart[0]
         restart_snap = None
         with open(os.path.join(os.getcwd(),config_file_name),'r') as handle:
             for line in handle.readlines():
-                if 'RESTART_SNAP =' in line: restart_snap = eval(line.split('=')[1])
+                if 'RESTART_SNAP =' in line: restart_snap = int(line.split('=')[1])
     else:
-        restart_snap = None
-
         # set number of file blocks per snapshot, or read from snapshot header
         snapshot_block_number = None
         if not snapshot_block_number:
@@ -113,7 +140,11 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
 
         config_file_name = os.path.join(rockstar_directory,config_file_name)
         new_config_file_name = os.path.join(os.getcwd(),'rockstar_jobs',os.path.basename(config_file_name))
-        modify_rockstar_config(None,config_file_name,new_config_file_name,snapshot_indices[0],snapshot_indices[-1])
+
+        try: min_snap,max_snap = find_first_snapshot_with_halos(os.getcwd())
+        except: min_snap,max_snap = snapshot_indices[0],-1
+        need_to_do_work = max_snap < snapshot_indices[-1]
+
         config_file_name = new_config_file_name
 
     if restart_snap is not None and restart_snap == (len(snapshot_indices)-1):
@@ -147,6 +178,7 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
 
     if fn is not print: SubmissionScript.print_runtime()
     #time.sleep(2)
+    renumber_all_files(None)
 
 def submit_consistent_trees(workpath,halo_directory,run=False):
     #time.sleep(2)
