@@ -1,2 +1,4 @@
 src/rockstar_abg.egg-info
 src/rockstar_abg/__pycache__
+*out.o
+temp.sh
