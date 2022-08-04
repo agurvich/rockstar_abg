@@ -85,7 +85,7 @@ def initialize_workpath(workpath,snapshot_indices):
     ## handle the absurd scenario where we have nested snapdirs or something idk
     while os.path.isdir(fname):
         potential_snapshots = [
-            fname.split('_')[-1] for fname in os.listdir(fname) 
+            os.path.join(fname,sub_fname) for sub_fname in os.listdir(fname) 
             if ('snapdir' in fname) or ('snapshot' in fname and 'hdf5' in fname)]
         if len(fname) == 0: raise IOError(f"Couldn't find a snapshot in {fname}")
         fname = os.path.join(snappath,sorted(potential_snapshots)[0])

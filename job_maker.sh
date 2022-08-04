@@ -7,7 +7,7 @@ this_command=$1
 preamble=${HOME}/ss/preamble.sh
 
 ## target directory whose simulations we should loop over and generate halo files for
-sim_path=/projects/b1026/snapshots/restartdisktest/m11a_m2e3
+sim_path=/projects/b1026/snapshots/MassiveFIRE
 
 for sim_dir in ${sim_path}/*
 do
@@ -17,9 +17,10 @@ do
     if [ -d  ${sim_dir}/output ]
     then
 
-        if [ -f ${sim_dir}/halo/rockstar_dm/catalog_hdf5/halo_060.hdf5 ] 
+        if [ -f ${sim_dir}/halo/rockstar_dm/catalog_hdf5/tree.hdf5 ] 
         then
             echo ${name} "is already done!"
+            sleep 1
         else
             ## sets job_name to the last string delimited by _ (lol)
             IFS='_' read -ra ADDR <<< ${name}
@@ -32,11 +33,12 @@ do
             #echo "#SBATCH -t 48:00:00        # run time (hh:mm:ss) - 48 hours" >> temp.sh
             echo "#SBATCH -J ${job_name}_rockstar         # job name" >> temp.sh
             echo "python runner.py ${sim_path} ${name}" >> temp.sh
+            echo ${name} "missing tree.hdf5"
             ${this_command} temp.sh
             rm temp.sh
         fi
     else
-        echo ${name} "doesn't have an output directory"
+        echo ${name} "has no snaps"
         sleep 1
     fi
 
