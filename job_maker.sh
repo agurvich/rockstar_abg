@@ -4,13 +4,13 @@
 this_command=$1 
 
 ## job preamble with allocation, etc...
-preamble=${HOME}/ss/preamble.sh
+preamble=preamble.sh
 
 ## target directory whose simulations we should loop over and generate halo files for
 sim_path=${HOME}/snaps/fire3_compatability/core
 
 ## how many should we skip at the beginning (i.e. b.c. we are running interactively)
-skip=1
+skip=0
 
 for sim_dir in ${sim_path}/*
 do
@@ -37,7 +37,7 @@ do
             #echo "#SBATCH -t 48:00:00        # run time (hh:mm:ss) - 48 hours" >> temp.sh
             echo "#SBATCH -J ${job_name}_rockstar         # job name" >> temp.sh
             echo "module load hdf5" >> temp.sh
-            echo "python runner.py ${sim_path} ${name}" >> temp.sh
+            echo "python runner.py --sim_path=${sim_path} --name=${name} --suite_name=${suite_name}" >> temp.sh
             echo ${name} "missing tree.hdf5"
             ${this_command} temp.sh
             rm temp.sh
