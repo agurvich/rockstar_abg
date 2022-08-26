@@ -7,6 +7,8 @@ import numpy as np
 
 from .submit import submit_hdf5, submit_particle, submit_rockstar,submit_consistent_trees,modify_rockstar_config
 
+from abg_python.galaxy.gal_utils import Galaxy
+
 
 def main(
     savename,
@@ -26,6 +28,13 @@ def main(
         if os.path.basename(sim_path) != savename:
             workpath = os.path.join(sim_path,savename)
     print(f"interpreted workpath as: {sim_path}")
+
+    ## generate snapshot times if necessary
+    snaptimes_file = os.path.join(workpath,'snapshot_times.txt')
+    if not os.path.isfile(snaptimes_file):
+        galaxy = Galaxy(savename,snapnum=None,suite_name=suite_name,full_init=False)
+        galaxy.get_snapshotTimes(os.path.basename(snaptimes_file),target=snaptimes_file)
+            
     
     ## creates directories and moves to halo/rockstar_dm
     workpath,fire2,snapshot_indices = initialize_workpath(workpath,snapshot_indices)

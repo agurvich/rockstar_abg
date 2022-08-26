@@ -148,12 +148,12 @@ def submit_rockstar(snapshot_indices,rockstar_directory=None,run=False):
         new_config_file_name = os.path.join(os.getcwd(),'rockstar_jobs',os.path.basename(config_file_name))
 
         try: min_snap,max_snap = find_first_snapshot_with_halos(os.getcwd())
-        except: min_snap,max_snap = snapshot_indices[0],-1
+        except: min_snap,max_snap = snapshot_indices[0],snapshot_indices[0]
         need_to_do_work = max_snap < snapshot_indices[-1]
 
         modify_rockstar_config(
             None,
-            min_snap,
+            max_snap,
             snapshot_indices[-1],
             config_file_name,
             new_config_file_name)
